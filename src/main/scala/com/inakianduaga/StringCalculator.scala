@@ -11,11 +11,17 @@ object StringCalculator {
       .map(numberString => Try(numberString.toInt))
       .collect { case Success(n) => n }
       .filter(_ <= 1000)
-      .map {
-          case number if number >= 0 => Success(number)
-          case number if number < 0 => Failure(new IllegalArgumentException(number.toString))
-      }
-      .sum
+      .map (number =>
+          if (number >= 0) Right(number)
+          else Left(number)
+      )
+      .foldLeft[Either[List[Int], Int]](Right(0))((sumOrExceptions, wrappedInt) =>
+        if (wrappedInt.isLeft) Left(wrappedInt.left.get :: sumOrExceptions.left.getOrElse(Nil))
+        else Right(sumOrExceptions.right.get + wrappedInt.right.get)
+      )
+      .left.map(_.map(int => int.toString))
+      .left.map("negative not allowed: " + _.mkString(","))
+      .fold[Try[Int]](exceptionMsg => Failure(new IllegalArgumentException(exceptionMsg)), Success(_))
 
   private def delimiter(numbers: String): Char =
     if(numbers.startsWith("//"))
